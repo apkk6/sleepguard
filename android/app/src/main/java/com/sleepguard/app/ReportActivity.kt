@@ -9,6 +9,7 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -29,16 +30,19 @@ class ReportActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         store = EventStore(this)
 
-        val session = store.lastSession()
-        if (session == null) {
-            findViewById<TextView>(R.id.reportNoData).visibility = View.VISIBLE
-            hideCards()
-            return
+        val demo = intent.getBooleanExtra("demo", false)
+        val (session, events) = if (demo) buildDemoData() else run {
+            val s = store.lastSession()
+            if (s == null) {
+                findViewById<TextView>(R.id.reportNoData).visibility = View.VISIBLE
+                hideCards()
+                return
+            }
+            s to store.queryTonight(s.startMs)
         }
 
         val endMs = if (session.endMs == 0L) System.currentTimeMillis() else session.endMs
         val duration = (endMs - session.startMs).coerceAtLeast(0)
-        val events = store.queryTonight(session.startMs)
         val snore = events.count { it.type == "SNORE" }
         val apnea = events.count { it.type == "APNEA" }
 
@@ -185,10 +189,36 @@ class ReportActivity : AppCompatActivity() {
     }
 
     private fun play(ev: SleepEvent) {
+        if (ev.wavPath.isBlank()) {
+            Toast.makeText(this, R.string.no_demo_audio, Toast.LENGTH_SHORT).show()
+            return
+        }
         player?.release()
         player = MediaPlayer().apply {
             setDataSource(ev.wavPath); prepare(); start()
         }
+    }
+
+    /** 示例报告：用假数据演示报告长什么样（无真实录音） */
+    private fun buildDemoData(): Pair<SleepSession, List<SleepEvent>> {
+        val now = System.currentTimeMillis()
+        val startMs = now - 7 * 3_600_000L
+        val endMs = now
+        val session = SleepSession(0, startMs, endMs)
+        val plan = listOf(
+            "SNORE" to 1.2f, "SNORE" to 1.5f, "APNEA" to 2.1f,
+            "SNORE" to 1.8f, "SNORE" to 1.3f, "APNEA" to 2.4f,
+            "SNORE" to 2.0f, "SNORE" to 1.6f, "APNEA" to 2.0f,
+            "SNORE" to 1.4f, "SNORE" to 1.7f, "SNORE" to 1.1f,
+            "APNEA" to 2.6f
+        )
+        val events = mutableListOf<SleepEvent>()
+        var t = startMs + 1_800_000L
+        for ((type, score) in plan) {
+            events.add(SleepEvent(0, type, t, 13_000L, "", score))
+            t += ((20 + Math.random() * 40).toLong()) * 60_000L
+        }
+        return session to events
     }
 
     override fun onSupportNavigateUp(): Boolean {
