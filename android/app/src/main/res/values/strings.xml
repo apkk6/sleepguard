@@ -14,7 +14,7 @@
     <string name="apnea">呼吸暂停</string>
     <string name="no_events">今晚暂无事件</string>
     <string name="sensitivity">灵敏度</string>
-    <string name="wear_alert">手环告警</string>
+    <string name="wear_alert">震动告警</string>
     <string name="alarm_only_apnea">仅呼吸暂停告警</string>
     <string name="stop_monitor">停止监测 / 起床</string>
     <string name="view_report">查看睡眠报告</string>
@@ -35,4 +35,10 @@
     <string name="report_detail">事件明细（点击播放录音）</string>
     <string name="report_ongoing">进行中</string>
     <string name="report_hour_fmt">%02d:00</string>
+    <string name="test_vibrate">测试震动</string>
+    <string name="demo_report">示例报告</string>
+    <string name="sound_demo">声音示范（试听）</string>
+    <string name="vibrate_tested">已触发一次震动</string>
+    <string name="demo_subtitle">演示数据 · 非真实监测</string>
+    <string name="no_demo_audio">示例数据无录音可播放</string>
 </resources>

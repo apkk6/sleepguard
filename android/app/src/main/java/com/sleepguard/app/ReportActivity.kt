@@ -47,6 +47,7 @@ class ReportActivity : AppCompatActivity() {
         val endStr = if (session.endMs == 0L) getString(R.string.report_ongoing) else sdf.format(Date(endMs))
         findViewById<TextView>(R.id.reportSubtitle).text =
             "${getString(R.string.report_session_from)}${sdf.format(Date(session.startMs))}  ~  $endStr"
+        if (demo) findViewById<TextView>(R.id.reportSubtitle).text = getString(R.string.demo_subtitle)
 
         // 概览
         findViewById<TextView>(R.id.durationText).text = formatDuration(duration)

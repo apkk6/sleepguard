@@ -35,11 +35,6 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
-    // ── 华为 Wear Engine（手环10 告警）──
-    // 真机振动/手环显示需要此 SDK：华为运动健康连好手环 + 华为开发者联盟注册本 App 并申请
-    // Wear Engine「消息通知」权限 + 首次运行在运动健康里授权。三步未齐则 WearAlert 自动降级为
-    // 手机本地铃声+循环震动，App 仍可正常录音与报告。settings.gradle 已含华为 Maven 仓库。
-    implementation 'com.huawei.hms:wearengine:5.0.2.306'
     // 模型升级用（放 assets/snore_v1.tflite 后启用 Detector 中的 TFLite 分支）
     // implementation 'org.tensorflow:tensorflow-lite:2.14.0'
 }

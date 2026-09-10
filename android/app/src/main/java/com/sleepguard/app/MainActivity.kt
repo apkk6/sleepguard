@@ -3,9 +3,12 @@ package com.sleepguard.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.media.ToneGenerator
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -13,6 +16,7 @@ import android.widget.ImageButton
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -32,7 +36,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var store: EventStore
     private lateinit var adapter: EventAdapter
-    private lateinit var bandStatusText: TextView
     private var player: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,11 +61,15 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ReportActivity::class.java))
         }
 
-        bandStatusText = findViewById(R.id.bandStatusText)
-        findViewById<MaterialButton>(R.id.connectBandBtn).setOnClickListener {
-            bandStatusText.text = getString(R.string.band_connecting)
-            WearAlert.connect(this) { updateBand() }
+        // 演示与测试
+        findViewById<MaterialButton>(R.id.demoReportBtn).setOnClickListener {
+            startActivity(Intent(this, ReportActivity::class.java).putExtra("demo", true))
         }
+        findViewById<MaterialButton>(R.id.testVibrateBtn).setOnClickListener {
+            WearAlert.testVibrate(this)
+            Toast.makeText(this, R.string.vibrate_tested, Toast.LENGTH_SHORT).show()
+        }
+        findViewById<MaterialButton>(R.id.soundDemoBtn).setOnClickListener { playDemoSound() }
 
         val bar = findViewById<SeekBar>(R.id.sensitivityBar)
         bar.max = 100
@@ -83,7 +90,6 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshUi()
-        WearAlert.queryDevice(this) { updateBand() }
     }
 
     private fun RecordingServiceStarted(): Boolean =
@@ -106,17 +112,12 @@ class MainActivity : AppCompatActivity() {
         refreshUi()
     }
 
-    private fun updateBand() {
-        bandStatusText.text = "手环：${WearAlert.bandStatus}"
-    }
-
     private fun refreshUi() {
         val started = RecordingServiceStarted()
         findViewById<MaterialButton>(R.id.toggleBtn).text =
             getString(if (started) R.string.stop_monitor else R.string.start_sleep)
         findViewById<TextView>(R.id.statusText).text =
             if (started) getString(R.string.recording) else getString(R.string.idle)
-        updateBand()
         findViewById<View>(R.id.stopAlertBtn).visibility =
             if (WearAlert.isAlerting()) View.VISIBLE else View.GONE
         CoroutineScope(Dispatchers.IO).launch {
@@ -142,6 +143,16 @@ class MainActivity : AppCompatActivity() {
         player?.release()
         player = MediaPlayer().apply {
             setDataSource(ev.wavPath); prepare(); start()
+        }
+    }
+
+    /** 声音示范：仅手动试听，告警本身保持静音震动 */
+    private fun playDemoSound() {
+        try {
+            val tg = ToneGenerator(AudioManager.STREAM_ALARM, 80)
+            tg.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_SIGNAL, 500)
+        } catch (e: Throwable) {
+            Log.w("MainActivity", "demo sound failed: ${e.message}")
         }
     }
 

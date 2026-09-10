@@ -159,7 +159,7 @@ class RecordingService : Service() {
         val d = detector ?: return
         if (type == "APNEA" || (type == "SNORE" && d.shouldAlertSnore())) {
             val title = getString(R.string.alert_title)
-            val text = if (type == "APNEA") "检测到呼吸暂停，手环正在提醒" else "检测到重度连续鼾声"
+            val text = if (type == "APNEA") "手机正在震动提醒（静音）" else "检测到重度连续鼾声"
             WearAlert.startAlert(this, title, text)
         }
     }
