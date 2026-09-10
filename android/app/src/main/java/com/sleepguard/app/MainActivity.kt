@@ -10,6 +10,8 @@ import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
 import android.util.Log
@@ -17,6 +19,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
@@ -41,6 +44,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var store: EventStore
     private lateinit var adapter: EventAdapter
     private var player: MediaPlayer? = null
+
+    // 实时检测反馈面板刷新
+    private val liveHandler = Handler(Looper.getMainLooper())
+    private val liveRunnable = object : Runnable {
+        override fun run() {
+            updateLivePanel()
+            liveHandler.postDelayed(this, 150)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -81,7 +93,7 @@ class MainActivity : AppCompatActivity() {
 
         val bar = findViewById<SeekBar>(R.id.sensitivityBar)
         bar.max = 100
-        bar.progress = getSharedPreferences("cfg", MODE_PRIVATE).getInt("sens", 55)
+        bar.progress = getSharedPreferences("cfg", MODE_PRIVATE).getInt("sens", 70)
         bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) {}
             override fun onStartTrackingTouch(s: SeekBar?) {}
@@ -120,6 +132,11 @@ class MainActivity : AppCompatActivity() {
         refreshUi()
     }
 
+    override fun onPause() {
+        super.onPause()
+        stopLive()
+    }
+
     private fun RecordingServiceStarted(): Boolean =
         RecordingService.instance != null
 
@@ -132,17 +149,55 @@ class MainActivity : AppCompatActivity() {
             .putExtra("wearAlert", findViewById<Switch>(R.id.wearSwitch).isChecked)
             .putExtra("vibStrength", findViewById<SeekBar>(R.id.vibStrengthBar).progress.coerceAtLeast(1))
         ContextCompat.startForegroundService(this, i)
+        findViewById<View>(R.id.livePanel).visibility = View.VISIBLE
+        startLive()
         refreshUi()
     }
 
     private fun stopRecording() {
         WearAlert.stopAlert(this)
         startService(Intent(this, RecordingService::class.java).setAction(RecordingService.ACTION_STOP))
+        findViewById<View>(R.id.livePanel).visibility = View.GONE
+        stopLive()
         refreshUi()
+    }
+
+    private fun startLive() {
+        liveHandler.removeCallbacks(liveRunnable)
+        liveHandler.post(liveRunnable)
+    }
+
+    private fun stopLive() {
+        liveHandler.removeCallbacks(liveRunnable)
+    }
+
+    private fun updateLivePanel() {
+        val panel = findViewById<View>(R.id.livePanel)
+        if (panel.visibility != View.VISIBLE) return
+        val vol = RecordingService.liveRms.coerceAtMost(3000f)
+        findViewById<ProgressBar>(R.id.liveVolBar).progress = (vol / 3000f * 100).toInt()
+        val score = RecordingService.liveScore
+        val scoreTv = findViewById<TextView>(R.id.liveScoreText)
+        val hintTv = findViewById<TextView>(R.id.liveHintText)
+        if (RecordingService.liveAlerting) {
+            scoreTv.text = getString(R.string.live_ok)
+            scoreTv.setTextColor(0xFF1B7A3E.toInt())
+            hintTv.text = ""
+            return
+        }
+        val scorePct = (score * 100).toInt()
+        scoreTv.text = "实时强度：$scorePct% ／ 触发阈值 100%"
+        scoreTv.setTextColor(if (score >= 1f) 0xFF1B7A3E.toInt() else 0xFF9A6A00.toInt())
+        val sb = StringBuilder()
+        if (RecordingService.liveCentroid > 900f) sb.append(getString(R.string.live_hint_centroid)).append("\n")
+        if (RecordingService.liveLowRatio < 0.55f) sb.append(getString(R.string.live_hint_lowratio))
+        hintTv.text = if (sb.isEmpty()) getString(R.string.live_wait) else sb.toString().trim()
     }
 
     private fun refreshUi() {
         val started = RecordingServiceStarted()
+        findViewById<View>(R.id.livePanel).visibility = if (started) View.VISIBLE else View.GONE
+        if (started) startLive() else stopLive()
         findViewById<MaterialButton>(R.id.toggleBtn).text =
             getString(if (started) R.string.stop_monitor else R.string.start_sleep)
         findViewById<TextView>(R.id.statusText).text =

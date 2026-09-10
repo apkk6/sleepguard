@@ -39,4 +39,12 @@
     <string name="vibrate_tested">已触发一次震动</string>
     <string name="demo_subtitle">演示数据 · 非真实监测</string>
     <string name="no_demo_audio">示例数据无录音可播放</string>
+    <string name="live_title">实时检测反馈</string>
+    <string name="live_volume">当前音量（对着手机发出鼾声会跳动）</string>
+    <string name="live_score_init">实时强度：— ／ 触发阈值 100%</string>
+    <string name="live_ok">✅ 已判定为鼾声并触发震动</string>
+    <string name="live_wait">未达触发：强度不足或发声不够低沉</string>
+    <string name="live_hint_centroid">质心偏高（声音偏尖）→ 用喉咙发低沉“喝—”声而非吹气</string>
+    <string name="live_hint_lowratio">低频占比偏低 → 贴近枕头/喉咙发声更易识别</string>
+    <string name="live_panel_tip">监测中实时显示，点“停止监测”后隐藏</string>
 </resources>

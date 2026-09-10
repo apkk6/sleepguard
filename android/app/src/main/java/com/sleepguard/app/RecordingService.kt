@@ -44,6 +44,16 @@ class RecordingService : Service() {
         private const val ALERT_AUTO_STOP_MS = 90_000L  // 鼾声停止 90s 后自动停止震动
         @Volatile var instance: RecordingService? = null
             private set
+
+        // 实时反馈数据（供主界面调试面板读取）
+        @Volatile var liveRms = 0f
+        @Volatile var liveLowRatio = 0f
+        @Volatile var liveCentroid = 0f
+        @Volatile var liveScore = 0f
+        @Volatile var liveThrRms = 0f
+        @Volatile var liveIsSnore = false
+        @Volatile var liveAlerting = false
+        @Volatile var liveSensitivity = 55
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -86,6 +96,7 @@ class RecordingService : Service() {
                 instance = this
                 wearAlertOn = intent?.getBooleanExtra("wearAlert", true) ?: true
                 val sens = intent?.getIntExtra("sensitivity", 55) ?: 55
+                liveSensitivity = sens
                 // 应用用户设置的震动强度（1~100，100=满振幅不封顶）
                 val vs = intent?.getIntExtra("vibStrength", 100) ?: 100
                 WearAlert.setStrength(vs)
@@ -152,6 +163,14 @@ class RecordingService : Service() {
 
         val feat = d.analyzeFrame(block, now)
         val res = d.onFrame(feat, now)
+        // 实时反馈：把本帧特征写入静态字段，主界面调试面板定时读取
+        liveRms = feat.rms
+        liveLowRatio = feat.lowRatio
+        liveCentroid = feat.centroid
+        liveScore = d.lastScore
+        liveThrRms = d.lastThrRms
+        liveIsSnore = feat.isSnore
+        liveAlerting = WearAlert.isAlerting()
         preBuffer.addLast(block)
         while (preBuffer.size > PRE_SECONDS * 2) preBuffer.removeFirst() // 5s
 

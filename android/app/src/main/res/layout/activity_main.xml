@@ -44,6 +44,59 @@
         android:textColor="#A32D2D"
         android:visibility="gone" />
 
+    <!-- 实时检测调试面板（监测中可见） -->
+    <LinearLayout
+        android:id="@+id/livePanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:background="#E9F7EE"
+        android:orientation="vertical"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/live_title"
+            android:textColor="#1B7A3E"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/live_volume"
+            android:textColor="#444441"
+            android:textSize="12sp" />
+
+        <ProgressBar
+            android:id="@+id/liveVolBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:progress="0" />
+
+        <TextView
+            android:id="@+id/liveScoreText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/live_score_init"
+            android:textColor="#1B7A3E"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/liveHintText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:textColor="#5F5E5A"
+            android:textSize="12sp" />
+    </LinearLayout>
+
     <!-- 告警方式说明 -->
     <TextView
         android:layout_width="match_parent"

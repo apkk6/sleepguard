@@ -47,6 +47,12 @@ class Detector(sensitivity: Int) {
     private var inSnoringEpisode = false
     private val snoreTimestamps = ArrayDeque<Long>()
 
+    // 实时反馈（供 UI 显示）：每帧更新当前得分与阈值
+    @Volatile var lastScore = 0f          // rms / 阈值，≥1.0 即触发
+    @Volatile var lastThrRms = 0f         // 当前 RMS 阈值
+    @Volatile var lastLowRatio = 0f       // 低频能量占比
+    @Volatile var lastCentroid = 0f       // 频谱质心
+
     fun analyzeFrame(samples: ShortArray, nowMs: Long): FrameFeat {
         require(samples.size == FRAME)
         var sumSq = 0.0; var zc = 0
@@ -85,6 +91,10 @@ class Detector(sensitivity: Int) {
 
     /** 每 0.5s 调一次；返回发生的事件（一帧最多报一个） */
     fun onFrame(f: FrameFeat, nowMs: Long): DetectionResult {
+        lastScore = (f.rms / thrRms).coerceAtMost(3f)
+        lastThrRms = thrRms
+        lastLowRatio = f.lowRatio
+        lastCentroid = f.centroid
         if (f.isSnore) recentSnoreFrames++ else recentSnoreFrames = if (recentSnoreFrames > 0) recentSnoreFrames - 1 else 0
 
         if (recentSnoreFrames >= SNORE_MIN_FRAMES) {
