@@ -71,6 +71,9 @@ class ReportActivity : AppCompatActivity() {
         // 每小时分布
         buildHourly(events, session.startMs, endMs)
 
+        // 整夜强度曲线
+        buildCurve(events, session.startMs, endMs)
+
         // 明细
         val detailEmpty = findViewById<TextView>(R.id.detailEmpty)
         detailEmpty.visibility = if (events.isEmpty()) View.VISIBLE else View.GONE
@@ -83,6 +86,7 @@ class ReportActivity : AppCompatActivity() {
         findViewById<MaterialCardView>(R.id.cardSummary).visibility = View.GONE
         findViewById<MaterialCardView>(R.id.cardScore).visibility = View.GONE
         findViewById<MaterialCardView>(R.id.cardHourly).visibility = View.GONE
+        findViewById<MaterialCardView>(R.id.cardCurve).visibility = View.GONE
         findViewById<MaterialCardView>(R.id.cardDetail).visibility = View.GONE
     }
 
@@ -146,6 +150,23 @@ class ReportActivity : AppCompatActivity() {
 
             container.addView(row)
         }
+    }
+
+    private fun buildCurve(events: List<SleepEvent>, startMs: Long, endMs: Long) {
+        val view = findViewById<SnoreCurveView>(R.id.snoreCurve)
+        if (events.isEmpty()) { view.setData(emptyList()); return }
+        val n = 48
+        val span = (endMs - startMs).toFloat().coerceAtLeast(1f)
+        val maxScore = events.maxOfOrNull { it.score }?.coerceAtLeast(0.1f) ?: 1f
+        val buckets = FloatArray(n)
+        for (ev in events) {
+            val f = ((ev.startEpochMs - startMs).toFloat() / span).coerceIn(0f, 0.999f)
+            val idx = (f * (n - 1)).toInt()
+            val norm = (ev.score / maxScore).coerceIn(0f, 1f)
+            if (norm > buckets[idx]) buckets[idx] = norm
+        }
+        val points = (0 until n).map { i -> Pair(i.toFloat() / (n - 1), buckets[i]) }
+        view.setData(points)
     }
 
     private fun formatDuration(ms: Long): String {

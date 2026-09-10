@@ -236,6 +236,46 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 曲线卡片 -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardCurve"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="2dp"
+            app:contentPadding="18dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="整夜鼾声强度曲线"
+                    android:textColor="#0C447C"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <com.sleepguard.app.SnoreCurveView
+                    android:id="@+id/snoreCurve"
+                    android:layout_width="match_parent"
+                    android:layout_height="120dp"
+                    android:layout_marginTop="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="横轴为入睡后的时间，纵轴为当段鼾声 / 呼吸暂停强度"
+                    android:textColor="#7A8699"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <!-- 明细卡片 -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardDetail"

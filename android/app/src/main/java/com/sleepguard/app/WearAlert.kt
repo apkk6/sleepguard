@@ -126,7 +126,7 @@ object WearAlert {
     fun queryDevice(ctx: Context, onResult: ((String) -> Unit)? = null) {
         try {
             val dc: DeviceClient = HiWear.getDeviceClient(ctx)
-            dc.getConnectedDevices().addOnSuccessListener(OnSuccessListener { list ->
+            dc.getBondedDevices().addOnSuccessListener(OnSuccessListener { list ->
                 val d = list.firstOrNull { it.isConnected }
                 targetDevice = d
                 bandStatus = if (d != null) "已连接：${d.name}" else "手环未连接（请在华为运动健康中连接）"
@@ -147,7 +147,7 @@ object WearAlert {
     private fun ensureDevice(ctx: Context) {
         try {
             val dc: DeviceClient = HiWear.getDeviceClient(ctx)
-            dc.getConnectedDevices().addOnSuccessListener(OnSuccessListener { list ->
+            dc.getBondedDevices().addOnSuccessListener(OnSuccessListener { list ->
                 targetDevice = list.firstOrNull { it.isConnected }
                 if (targetDevice != null) bandStatus = "已连接：${targetDevice!!.name}"
             }).addOnFailureListener(OnFailureListener { targetDevice = null })
@@ -167,7 +167,7 @@ object WearAlert {
                     .setButtonContents(HashMap<Int, String>().apply {
                         put(NotificationConstants.BUTTON_ONE_CONTENT_KEY, ctx.getString(R.string.alert_confirm))
                     })
-                    .setAction(object : Action() {
+                    .setAction(object : Action {
                         override fun onResult(notification: Notification?, feedback: Int) {
                             // feedback: 0=HOME/灭屏 1=删除 2=点击第1个按钮 3/4=其余按钮
                             if (feedback == 2) stopAlert(ctx)
