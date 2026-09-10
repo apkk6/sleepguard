@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">守眠 SleepGuard</string>
+    <string name="start_sleep">开始睡觉</string>
+    <string name="stop_sleep">起床</string>
+    <string name="recording">录音监测中…</string>
+    <string name="idle">准备就绪</string>
+    <string name="stop_alert">停止告警（我醒了）</string>
+    <string name="alert_channel">睡眠告警</string>
+    <string name="rec_channel">录音服务</string>
+    <string name="alert_title">检测到呼吸暂停/重度鼾声！</string>
+    <string name="alert_confirm">我醒了</string>
+    <string name="snore">打鼾</string>
+    <string name="apnea">呼吸暂停</string>
+    <string name="no_events">今晚暂无事件</string>
+    <string name="sensitivity">灵敏度</string>
+    <string name="wear_alert">手环告警</string>
+    <string name="alarm_only_apnea">仅呼吸暂停告警</string>
+</resources>
