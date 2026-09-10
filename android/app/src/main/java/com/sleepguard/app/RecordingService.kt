@@ -19,7 +19,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlin.math.maxOf
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -39,12 +38,11 @@ class RecordingService : Service() {
         private const val PRE_SECONDS = 5
         private const val POST_SECONDS = 8
         private const val NOTIF_ID = 1001
+        @Volatile var instance: RecordingService? = null
+            private set
     }
 
-    @Volatile var instance: RecordingService? = null
-        private set
-
-    private val scope = SupervisorJob() + Dispatchers.IO
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var audioRecord: AudioRecord? = null
     @Volatile private var running = false
     private lateinit var store: EventStore
@@ -105,7 +103,7 @@ class RecordingService : Service() {
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC, Detector.SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT,
-            maxOf(minBuf, Detector.FRAME * 2 * 4)
+            if (minBuf > Detector.FRAME * 2 * 4) minBuf else Detector.FRAME * 2 * 4
         )
         detector = Detector(sensitivity).also { it.reset() }
         preBuffer.clear(); postPendQueue.clear(); capturingPost = false
