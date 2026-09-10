@@ -66,8 +66,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ReportActivity::class.java).putExtra("demo", true))
         }
         findViewById<MaterialButton>(R.id.testVibrateBtn).setOnClickListener {
-            WearAlert.testVibrate(this)
-            Toast.makeText(this, R.string.vibrate_tested, Toast.LENGTH_SHORT).show()
+            val msg = WearAlert.testVibrate(this)
+            Toast.makeText(
+                this,
+                if (msg.isEmpty()) getString(R.string.vibrate_tested) else msg,
+                Toast.LENGTH_LONG
+            ).show()
         }
         findViewById<MaterialButton>(R.id.soundDemoBtn).setOnClickListener { playDemoSound() }
 
