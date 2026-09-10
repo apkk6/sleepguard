@@ -126,7 +126,30 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
+            android:checked="true"
             android:text="@string/wear_alert" />
+    </LinearLayout>
+
+    <!-- 震动强度：1~100，100=满振幅(不封顶) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/vib_strength"
+            android:textColor="#444441" />
+
+        <SeekBar
+            android:id="@+id/vibStrengthBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp" />
     </LinearLayout>
 
     <TextView

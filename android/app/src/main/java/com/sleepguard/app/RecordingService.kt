@@ -13,6 +13,8 @@ import android.media.MediaRecorder
 import android.os.Build
 import android.os.Environment
 import android.os.IBinder
+import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +30,7 @@ import java.util.Locale
 /**
  * 整夜录音前台服务：AudioRecord 16kHz 单声道 PCM。
  * 预缓冲 5s 环形缓冲；命中事件 → 截前 5s + 后 8s 存 WAV → 入库 → 触发告警。
+ * 录音期间持 PARTIAL_WAKE_LOCK，避免熄屏后 CPU 休眠导致检测/震动停止（荣耀等机型关键）。
  */
 class RecordingService : Service() {
 
@@ -38,6 +41,7 @@ class RecordingService : Service() {
         private const val PRE_SECONDS = 5
         private const val POST_SECONDS = 8
         private const val NOTIF_ID = 1001
+        private const val ALERT_AUTO_STOP_MS = 90_000L  // 鼾声停止 90s 后自动停止震动
         @Volatile var instance: RecordingService? = null
             private set
     }
@@ -49,6 +53,8 @@ class RecordingService : Service() {
     private var detector: Detector? = null
     private var wearAlertOn = true
     private var sessionId: Long? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    @Volatile private var lastAlertMs = 0L
 
     private val preBuffer = ArrayDeque<ShortArray>()          // 0.5s 块
     private val postPendQueue = ArrayDeque<ShortArray?>()     // 事件后补录（null 为标记）
@@ -80,6 +86,9 @@ class RecordingService : Service() {
                 instance = this
                 wearAlertOn = intent?.getBooleanExtra("wearAlert", true) ?: true
                 val sens = intent?.getIntExtra("sensitivity", 55) ?: 55
+                // 应用用户设置的震动强度（1~100，100=满振幅不封顶）
+                val vs = intent?.getIntExtra("vibStrength", 100) ?: 100
+                WearAlert.setStrength(vs)
                 startForeground(NOTIF_ID, buildNotification())
                 if (!running) startRecording(sens)
             }
@@ -98,6 +107,14 @@ class RecordingService : Service() {
     private fun startRecording(sensitivity: Int) {
         if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED) { stopSelf(); return }
+        // 保持 CPU 唤醒，避免屏幕关闭后系统休眠导致检测/震动停止（荣耀等机型尤为关键）
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sleepguard:rec")
+            wakeLock?.acquire(12L * 60 * 60 * 1000) // 最长 12 小时
+        } catch (e: Throwable) {
+            Log.w("RecordingService", "wakeLock acquire failed: ${e.message}")
+        }
         val minBuf = AudioRecord.getMinBufferSize(
             Detector.SAMPLE_RATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
@@ -127,6 +144,12 @@ class RecordingService : Service() {
     private fun processFrame(block: ShortArray) {
         val d = detector ?: return
         val now = System.currentTimeMillis()
+
+        // 鼾声停止一段时间后，自动停止震动（避免整夜空震把人吵醒后还在响）
+        if (WearAlert.isAlerting() && lastAlertMs > 0 && now - lastAlertMs > ALERT_AUTO_STOP_MS) {
+            WearAlert.stopAlert(this)
+        }
+
         val feat = d.analyzeFrame(block, now)
         val res = d.onFrame(feat, now)
         preBuffer.addLast(block)
@@ -142,7 +165,8 @@ class RecordingService : Service() {
 
         val eventType = when {
             res.type == "APNEA" -> "APNEA"
-            res.type == "SNORE" && res.score > 1.6f -> "SNORE"   // 只存较响的鼾声事件
+            // 轻度/重度鼾声都记录并触发震动（score>1.0 即超过阈值，含轻度）
+            res.type == "SNORE" && res.score > 1.0f -> "SNORE"
             else -> null
         }
         if (eventType != null) {
@@ -151,17 +175,24 @@ class RecordingService : Service() {
             pendingEvent = pe
             capturingPost = true
             postFramesLeft = POST_SECONDS * 2
-            if (wearAlertOn) maybeAlert(eventType)
+            if (wearAlertOn) maybeAlert(eventType, res.score)
         }
     }
 
-    private fun maybeAlert(type: String) {
-        val d = detector ?: return
-        if (type == "APNEA" || (type == "SNORE" && d.shouldAlertSnore())) {
-            val title = getString(R.string.alert_title)
-            val text = if (type == "APNEA") "手机正在震动提醒（静音）" else "检测到重度连续鼾声"
-            WearAlert.startAlert(this, title, text)
+    private fun maybeAlert(type: String, score: Float) {
+        val intensity = when {
+            type == "APNEA" -> "APNEA"
+            score <= 1.6f -> "LIGHT"   // 轻度鼾声
+            else -> "HEAVY"            // 重度鼾声
         }
+        val title = getString(R.string.alert_title)
+        val text = when {
+            type == "APNEA" -> "检测到呼吸暂停，手机正在震动提醒（静音）"
+            type == "SNORE" && score <= 1.6f -> "检测到轻度鼾声，手机正在震动提醒（静音）"
+            else -> "检测到重度连续鼾声，手机正在震动提醒（静音）"
+        }
+        lastAlertMs = System.currentTimeMillis()
+        WearAlert.startAlert(this, title, text, intensity)
     }
 
     private fun finalizeEvent() {
@@ -183,6 +214,8 @@ class RecordingService : Service() {
     override fun onDestroy() {
         running = false
         instance = null
+        try { wakeLock?.release() } catch (_: Throwable) {}
+        wakeLock = null
         sessionId?.let { store.endSession(it, System.currentTimeMillis()) }
         sessionId = null
         audioRecord?.run { try { stop(); release() } catch (_: Exception) {} }

@@ -15,10 +15,11 @@
     <string name="no_events">今晚暂无事件</string>
     <string name="sensitivity">灵敏度</string>
     <string name="wear_alert">震动告警</string>
+    <string name="vib_strength">震动强度</string>
     <string name="alarm_only_apnea">仅呼吸暂停告警</string>
     <string name="stop_monitor">停止监测 / 起床</string>
     <string name="view_report">查看睡眠报告</string>
-    <string name="alert_mode_hint">检测到呼吸暂停/重度鼾声时，手机会循环震动提醒（静音）。点通知或 App 内「我醒了」即可停止。</string>
+    <string name="alert_mode_hint">检测到呼吸暂停或鼾声（含轻度）时，手机会循环震动提醒（完全静音）。点通知或 App 内「我醒了」即可停止。请务必把守眠加入「不受电池优化限制」，否则熄屏后可能不震动。</string>
     <string name="report_title">睡眠报告</string>
     <string name="report_subtitle">昨晚入睡监测记录</string>
     <string name="report_duration">监测时长</string>

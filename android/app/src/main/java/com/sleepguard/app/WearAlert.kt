@@ -11,11 +11,14 @@ import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.Log
+import kotlin.math.roundToInt
 
 /**
- * 纯手机告警：检测到呼吸暂停 / 重度连续鼾声时，手机循环震动提醒（完全静音，
- * 无铃声、无提示音、无系统振动），直至用户点「我醒了」（通知按钮或 App 内按钮）取消。
- * 不依赖任何手环或外部服务，无需任何授权。
+ * 纯手机告警：检测到呼吸暂停 / 鼾声（含轻度）时，手机循环震动提醒（完全静音，
+ * 无铃声、无提示音、无系统振动），直至用户点「我醒了」取消。不依赖手环或外部服务。
+ *
+ * 震动强度可由用户调节：setStrength(percent) 把 1~100 映射到振幅 40~255；
+ * 100 = 满振幅（Android 硬件上限），不封顶。
  */
 object WearAlert {
 
@@ -23,8 +26,19 @@ object WearAlert {
     private const val CHANNEL_ALERT = "sleep_alert"
     private const val REQ_ID = 9001
 
-    // 震动节奏（毫秒）：0 延迟 → 1200 震动 → 600 停顿 → 循环
-    private val VIB_PATTERN = longArrayOf(0L, 1200L, 600L)
+    // 震动节奏（毫秒）：[起振延迟, 震动时长, 停顿时长]，repeatIndex=0 表示无限循环
+    private val VIB_LIGHT = longArrayOf(0L, 800L, 600L)    // 轻度鼾声：节奏舒缓
+    private val VIB_STRONG = longArrayOf(0L, 1500L, 350L)  // 重度鼾声 / 呼吸暂停：长促
+
+    // 用户可调振幅（40~255），默认 255 = 满振幅（不封顶）
+    @Volatile var userAmplitude: Int = 255
+        private set
+
+    /** percent: 1~100，100 = 满振幅（Android 硬件上限，不封顶） */
+    fun setStrength(percent: Int) {
+        val p = percent.coerceIn(1, 100)
+        userAmplitude = ((p / 100f) * 255f).roundToInt().coerceIn(40, 255)
+    }
 
     private val handler = Handler(Looper.getMainLooper())
     private var ringing = false
@@ -38,9 +52,9 @@ object WearAlert {
                 CHANNEL_ALERT, ctx.getString(R.string.alert_channel),
                 NotificationManager.IMPORTANCE_HIGH
             )
-            ch.setSound(null, null)   // 渠道静音
-            ch.enableVibration(false)  // 震动由我们手动控制，避免系统重复震动
-            ch.setBypassDnd(true)      // 尽量在勿扰模式下也能提醒
+            ch.setSound(null, null)    // 渠道静音
+            ch.enableVibration(false)   // 震动由我们手动控制，避免系统重复震动
+            ch.setBypassDnd(true)       // 尽量在勿扰模式下也能提醒
             nm.createNotificationChannel(ch)
         }
     }
@@ -48,54 +62,68 @@ object WearAlert {
     fun isAlerting() = ringing
 
     /**
-     * 测试震动：连续 3 下短震，用于验证手机马达是否正常。
-     * 返回诊断信息：空字符串表示已成功发起震动调用；否则为失败原因。
+     * 测试震动（4 下短促，按当前强度），用于验证手机马达是否正常。
+     * 返回诊断信息：空字符串 = 已成功发起震动调用；否则为失败/注意事项。
      */
     fun testVibrate(ctx: Context): String {
-        return try {
-            val vib = ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-            if (!vib.hasVibrator()) {
-                return "此设备没有振动马达"
-            }
-            // 三连短震（毫秒）：延迟0→震150→停90→震150→停90→震150
-            val pat = longArrayOf(0L, 150L, 90L, 150L, 90L, 150L)
+        val vib = ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        if (!vib.hasVibrator()) return "此设备没有振动马达"
+        val amp = userAmplitude
+        val pat = longArrayOf(0L, 300L, 120L, 300L, 120L, 300L, 120L, 300L)
+        val amps = intArrayOf(0, amp, 0, amp, 0, amp, 0, amp)
+        var errMsg: String? = null
+        val ok = try {
             if (Build.VERSION.SDK_INT >= 26) {
-                vib.vibrate(VibrationEffect.createWaveform(pat, -1))
-            } else {
-                @Suppress("DEPRECATION")
-                vib.vibrate(pat, -1)
-            }
-            // 勿扰(DND)检测：若开了勿扰，部分机型会静默屏蔽振动
-            if (Build.VERSION.SDK_INT >= 23) {
-                val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                if (nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) {
-                    return "已触发震动，但手机处于「勿扰/静音」模式，系统可能已屏蔽——请关闭勿扰或把本应用加入勿扰例外"
+                try {
+                    vib.vibrate(VibrationEffect.createWaveform(pat, amps, -1))
+                } catch (e: Throwable) {
+                    vib.vibrate(VibrationEffect.createWaveform(pat, -1)) // 回退：默认振幅
                 }
+            } else {
+                @Suppress("DEPRECATION") vib.vibrate(pat, -1)
             }
-            ""
-        } catch (e: Throwable) {
-            "震动被系统拦截：${e.message}（多半是系统未授予本应用「振动」权限，请到 设置→应用→守眠→权限 中开启）"
+            true
+        } catch (e: Throwable) { errMsg = e.message; false }
+        if (!ok) {
+            return "震动被系统拦截：${errMsg ?: "未知"}（请到 设置→应用→守眠→权限 中确认已开启「振动」）"
         }
+        // 勿扰(DND)检测：若开了勿扰，部分机型会静默屏蔽振动
+        if (Build.VERSION.SDK_INT >= 23) {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.currentInterruptionFilter != NotificationManager.INTERRUPTION_FILTER_ALL) {
+                return "已触发震动，但手机处于「勿扰/静音」模式，系统可能已屏蔽——请关闭勿扰，或把守眠加入勿扰例外"
+            }
+        }
+        return ""
     }
 
-    /** 开始循环震动提醒（幂等，重复调用无效） */
-    fun startAlert(ctx: Context, title: String, text: String) {
+    /**
+     * 开始循环震动提醒（幂等，重复调用无效）。
+     * @param intensity "LIGHT" | "HEAVY" | "APNEA"，决定节奏；振幅统一用用户设置（不封顶）。
+     */
+    fun startAlert(ctx: Context, title: String, text: String, intensity: String = "HEAVY") {
         if (ringing) return
         ringing = true
         val vib = ctx.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         vibrator = vib
-        // 循环震动（repeatIndex = 0 表示无限循环整个节奏序列）。
-        // 使用显式振幅数组，部分机型默认振幅过弱导致感觉不到。
-        if (Build.VERSION.SDK_INT >= 26) {
-            val amps = intArrayOf(0, 255, 0) // 对应：延迟0 / 震动全幅 / 停顿
-            vib.vibrate(VibrationEffect.createWaveform(VIB_PATTERN, amps, 0))
-        } else {
-            @Suppress("DEPRECATION")
-            vib.vibrate(VIB_PATTERN, 0)
+        val pattern = if (intensity == "LIGHT") VIB_LIGHT else VIB_STRONG
+        val amp = userAmplitude
+        val amps = intArrayOf(0, amp, 0)
+        try {
+            if (Build.VERSION.SDK_INT >= 26) {
+                try {
+                    vib.vibrate(VibrationEffect.createWaveform(pattern, amps, 0))
+                } catch (e: Throwable) {
+                    vib.vibrate(VibrationEffect.createWaveform(pattern, 0)) // 回退默认振幅
+                }
+            } else {
+                @Suppress("DEPRECATION") vib.vibrate(pattern, 0)
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "vibrate failed", e)
         }
-        // 静音通知：仅用于展示状态 + 「我醒了」按钮，无任何声音
         postSilentNotification(ctx, title, text)
-        Log.i(TAG, "silent vibration alert started")
+        Log.i(TAG, "silent vibration alert started ($intensity, amp=$amp)")
     }
 
     /** 用户醒来 → 停止震动与通知 */

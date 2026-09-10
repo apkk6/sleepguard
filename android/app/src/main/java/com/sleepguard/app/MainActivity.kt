@@ -6,8 +6,11 @@ import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.ToneGenerator
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -88,7 +91,27 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Switch>(R.id.wearSwitch).setOnCheckedChangeListener { _, _ -> }
 
+        // 震动强度滑杆：1~100，100 = 满振幅（不封顶）。默认满强度，解决“震得太轻弄不醒”
+        val vibBar = findViewById<SeekBar>(R.id.vibStrengthBar)
+        vibBar.max = 100
+        val savedVib = getSharedPreferences("cfg", MODE_PRIVATE).getInt("vibStrength", 100)
+        vibBar.progress = savedVib
+        WearAlert.setStrength(savedVib)
+        vibBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar?, p: Int, u: Boolean) {}
+            override fun onStartTrackingTouch(s: SeekBar?) {}
+            override fun onStopTrackingTouch(s: SeekBar?) {
+                val v = (s?.progress ?: 100).coerceAtLeast(1)
+                getSharedPreferences("cfg", MODE_PRIVATE).edit().putInt("vibStrength", v).apply()
+                WearAlert.setStrength(v)
+                Toast.makeText(this@MainActivity,
+                    if (v >= 100) "震动强度：满振幅（最强）" else "震动强度：$v",
+                    Toast.LENGTH_SHORT).show()
+            }
+        })
+
         requestPermissionsIfNeeded()
+        ensureNoBatteryOptimization()
     }
 
     override fun onResume() {
@@ -106,6 +129,7 @@ class MainActivity : AppCompatActivity() {
             .setAction(RecordingService.ACTION_START)
             .putExtra("sensitivity", findViewById<SeekBar>(R.id.sensitivityBar).progress)
             .putExtra("wearAlert", findViewById<Switch>(R.id.wearSwitch).isChecked)
+            .putExtra("vibStrength", findViewById<SeekBar>(R.id.vibStrengthBar).progress.coerceAtLeast(1))
         ContextCompat.startForegroundService(this, i)
         refreshUi()
     }
@@ -167,6 +191,20 @@ class MainActivity : AppCompatActivity() {
             ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
         if (need.isNotEmpty()) ActivityCompat.requestPermissions(this, need.toTypedArray(), 1)
+    }
+
+    /** 引导用户把本应用加入「不受电池优化限制」，否则熄屏后荣耀等机型会杀后台导致检测/震动停止 */
+    private fun ensureNoBatteryOptimization() {
+        if (Build.VERSION.SDK_INT < 23) return
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isIgnoringBatteryOptimizations(packageName)) return
+        Toast.makeText(this,
+            "请允许「不受电池优化限制」：否则熄屏后可能无法震动提醒",
+            Toast.LENGTH_LONG).show()
+        try {
+            startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                .setData(Uri.parse("package:$packageName")))
+        } catch (_: Throwable) {}
     }
 
     private class EventAdapter(
