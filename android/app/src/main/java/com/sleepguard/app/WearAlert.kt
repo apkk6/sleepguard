@@ -90,7 +90,6 @@ object WearAlert {
             .setPriority(android.app.Notification.PRIORITY_MAX)
             .setSound(null)              // 关键：无声音
             .setVibrate(null)            // 不让系统额外震动
-            .setSilent(true)             // 整体静音
             .setAutoCancel(true)
             .addAction(android.app.Notification.Action.Builder(
                 null, ctx.getString(R.string.alert_confirm), confirm).build())

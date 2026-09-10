@@ -150,7 +150,7 @@ class MainActivity : AppCompatActivity() {
     private fun playDemoSound() {
         try {
             val tg = ToneGenerator(AudioManager.STREAM_ALARM, 80)
-            tg.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_SIGNAL, 500)
+            tg.startTone(ToneGenerator.TONE_DTMF_0, 500)
         } catch (e: Throwable) {
             Log.w("MainActivity", "demo sound failed: ${e.message}")
         }
