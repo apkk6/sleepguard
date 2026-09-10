@@ -1,0 +1,10 @@
+{
+  "color": [
+    { "name": "start_window_background", "value": "#F7FAFD" },
+    { "name": "primary", "value": "#185FA5" },
+    { "name": "bg", "value": "#F7FAFD" },
+    { "name": "snore", "value": "#EF9F27" },
+    { "name": "apnea", "value": "#E24B4A" },
+    { "name": "muted", "value": "#888780" }
+  ]
+}

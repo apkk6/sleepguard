@@ -32,6 +32,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var store: EventStore
     private lateinit var adapter: EventAdapter
+    private lateinit var bandStatusText: TextView
     private var player: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,6 +54,16 @@ class MainActivity : AppCompatActivity() {
         }
         stopAlert.setOnClickListener { WearAlert.stopAlert(this); refreshUi() }
 
+        findViewById<MaterialButton>(R.id.viewReportBtn).setOnClickListener {
+            startActivity(Intent(this, ReportActivity::class.java))
+        }
+
+        bandStatusText = findViewById(R.id.bandStatusText)
+        findViewById<MaterialButton>(R.id.connectBandBtn).setOnClickListener {
+            bandStatusText.text = getString(R.string.band_connecting)
+            WearAlert.connect(this) { updateBand() }
+        }
+
         val bar = findViewById<SeekBar>(R.id.sensitivityBar)
         bar.max = 100
         bar.progress = getSharedPreferences("cfg", MODE_PRIVATE).getInt("sens", 55)
@@ -69,7 +80,11 @@ class MainActivity : AppCompatActivity() {
         requestPermissionsIfNeeded()
     }
 
-    override fun onResume() { super.onResume(); refreshUi() }
+    override fun onResume() {
+        super.onResume()
+        refreshUi()
+        WearAlert.queryDevice(this) { updateBand() }
+    }
 
     private fun RecordingServiceStarted(): Boolean =
         RecordingService.instance != null
@@ -82,18 +97,26 @@ class MainActivity : AppCompatActivity() {
             .putExtra("sensitivity", findViewById<SeekBar>(R.id.sensitivityBar).progress)
             .putExtra("wearAlert", findViewById<Switch>(R.id.wearSwitch).isChecked)
         ContextCompat.startForegroundService(this, i)
-        findViewById<TextView>(R.id.statusText).text = getString(R.string.recording)
-    }
-
-    private fun stopRecording() {
-        startService(Intent(this, RecordingService::class.java).setAction(RecordingService.ACTION_STOP))
-        findViewById<MaterialButton>(R.id.toggleBtn).text = getString(R.string.start_sleep)
         refreshUi()
     }
 
+    private fun stopRecording() {
+        WearAlert.stopAlert(this)
+        startService(Intent(this, RecordingService::class.java).setAction(RecordingService.ACTION_STOP))
+        refreshUi()
+    }
+
+    private fun updateBand() {
+        bandStatusText.text = "手环：${WearAlert.bandStatus}"
+    }
+
     private fun refreshUi() {
+        val started = RecordingServiceStarted()
+        findViewById<MaterialButton>(R.id.toggleBtn).text =
+            getString(if (started) R.string.stop_monitor else R.string.start_sleep)
         findViewById<TextView>(R.id.statusText).text =
-            if (RecordingServiceStarted()) getString(R.string.recording) else getString(R.string.idle)
+            if (started) getString(R.string.recording) else getString(R.string.idle)
+        updateBand()
         findViewById<View>(R.id.stopAlertBtn).visibility =
             if (WearAlert.isAlerting()) View.VISIBLE else View.GONE
         CoroutineScope(Dispatchers.IO).launch {

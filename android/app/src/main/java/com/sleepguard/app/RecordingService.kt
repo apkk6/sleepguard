@@ -48,6 +48,7 @@ class RecordingService : Service() {
     private lateinit var store: EventStore
     private var detector: Detector? = null
     private var wearAlertOn = true
+    private var sessionId: Long? = null
 
     private val preBuffer = ArrayDeque<ShortArray>()          // 0.5s 块
     private val postPendQueue = ArrayDeque<ShortArray?>()     // 事件后补录（null 为标记）
@@ -107,6 +108,8 @@ class RecordingService : Service() {
         )
         detector = Detector(sensitivity).also { it.reset() }
         preBuffer.clear(); postPendQueue.clear(); capturingPost = false
+        store.lastSession()?.let { if (it.endMs == 0L) store.endSession(it.id, System.currentTimeMillis()) }
+        sessionId = store.insertSession(System.currentTimeMillis())
         running = true
         audioRecord?.startRecording()
         scope.launch { loop() }
@@ -180,6 +183,8 @@ class RecordingService : Service() {
     override fun onDestroy() {
         running = false
         instance = null
+        sessionId?.let { store.endSession(it, System.currentTimeMillis()) }
+        sessionId = null
         audioRecord?.run { try { stop(); release() } catch (_: Exception) {} }
         audioRecord = null
         WearAlert.stopAlert(this)

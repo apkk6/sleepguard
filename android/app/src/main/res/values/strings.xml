@@ -16,4 +16,23 @@
     <string name="sensitivity">灵敏度</string>
     <string name="wear_alert">手环告警</string>
     <string name="alarm_only_apnea">仅呼吸暂停告警</string>
+    <string name="stop_monitor">停止监测 / 起床</string>
+    <string name="view_report">查看睡眠报告</string>
+    <string name="connect_band">连接手环</string>
+    <string name="band_connecting">手环连接中…</string>
+    <string name="band_default_hint">未连接（在华为运动健康连好手环后点“连接手环”授权）</string>
+    <string name="band_hint">授权后，检测到呼吸暂停/重度鼾声时手环会振动并提示，点手环“我醒了”即可取消</string>
+    <string name="report_title">睡眠报告</string>
+    <string name="report_subtitle">昨晚入睡监测记录</string>
+    <string name="report_duration">监测时长</string>
+    <string name="report_snore">打鼾次数</string>
+    <string name="report_apnea">呼吸暂停次数</string>
+    <string name="report_score">睡眠质量评分（参考）</string>
+    <string name="report_hourly">每小时事件分布</string>
+    <string name="report_snore_rate">鼾声占比</string>
+    <string name="report_no_data">今晚还没有监测记录，点“开始睡觉”后明天来看报告～</string>
+    <string name="report_session_from">入睡监测：</string>
+    <string name="report_detail">事件明细（点击播放录音）</string>
+    <string name="report_ongoing">进行中</string>
+    <string name="report_hour_fmt">%02d:00</string>
 </resources>

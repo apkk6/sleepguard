@@ -1,0 +1,10 @@
+{
+  "string": [
+    { "name": "app_name", "value": "守眠 SleepGuard" },
+    { "name": "module_desc", "value": "睡眠录音与鼾声/呼吸暂停监测" },
+    { "name": "ability_desc", "value": "守眠主能力" },
+    { "name": "perm_mic", "value": "用于整晚录制音频以识别鼾声与呼吸暂停" },
+    { "name": "perm_bg", "value": "用于夜间后台持续录音监测" },
+    { "name": "perm_wear_notify", "value": "用于向华为手环发送告警通知" }
+  ]
+}
