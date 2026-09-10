@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.sleepguard.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.sleepguard.app"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+    buildFeatures { viewBinding true }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.recyclerview:recyclerview:1.3.2'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1'
+    // ── 华为 Wear Engine（手环10 告警）──
+    // 默认关闭：避免在没有配置华为 Maven 仓库的环境（CI / 部分网络）编译失败。
+    // 启用步骤：① 华为开发者联盟申请 Wear Engine「消息通知」权限；
+    // ② settings.gradle 的 repositories 已含 maven { url 'https://developer.huawei.com/repo/' }；
+    // ③ 取消下一行注释重新编译。WearAlert.kt 已用反射调用，关闭时自动降级为手机本地闹钟+震动。
+    // implementation 'com.huawei.hms:wearengine:7.0.1.300'
+    // 模型升级用（放 assets/snore_v1.tflite 后启用 Detector 中的 TFLite 分支）
+    // implementation 'org.tensorflow:tensorflow-lite:2.14.0'
+}
