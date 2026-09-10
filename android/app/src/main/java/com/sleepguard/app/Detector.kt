@@ -3,7 +3,6 @@ package com.sleepguard.app
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.ln
-import kotlin.math.maxOf
 import kotlin.math.PI
 
 /**
@@ -57,10 +56,10 @@ class Detector(sensitivity: Int) {
         val bandE = FloatArray(bands.size)
         for (b in bands.indices) {
             val w = 2.0 * PI * bands[b] / SAMPLE_RATE
+            val coeff = 2.0 * cos(w)
             var sPrev = 0.0; var s2Prev = 0.0; var e = 0.0
             for (i in 0 until n step 4) { // 4 抽 1 加速
                 val x = samples[i] / 32768.0
-                val coeff = 2.0 * cos(w)
                 val s = x + coeff * sPrev - s2Prev
                 s2Prev = sPrev; sPrev = s
                 e += x * x
@@ -86,7 +85,7 @@ class Detector(sensitivity: Int) {
 
     /** 每 0.5s 调一次；返回发生的事件（一帧最多报一个） */
     fun onFrame(f: FrameFeat, nowMs: Long): DetectionResult {
-        if (f.isSnore) recentSnoreFrames++ else recentSnoreFrames = maxOf(0, recentSnoreFrames - 1)
+        if (f.isSnore) recentSnoreFrames++ else recentSnoreFrames = if (recentSnoreFrames > 0) recentSnoreFrames - 1 else 0
 
         if (recentSnoreFrames >= SNORE_MIN_FRAMES) {
             if (nowMs - lastSnoreEventMs > 3000) {          // 去抖：3s 内算同一事件
